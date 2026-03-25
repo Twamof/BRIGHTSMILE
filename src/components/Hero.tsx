@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import type { BookingFormData } from '../types';
+import { BOOKING_SCRIPT_URL } from '../config';
+import { BookingService } from '../services/api';
+
 
 const Hero: React.FC = () => {
     const [formData, setFormData] = useState<BookingFormData>({
@@ -9,12 +12,50 @@ const Hero: React.FC = () => {
         phone: ''
     });
 
+    const [loading, setLoading] = useState(false);
     const [isBooked, setIsBooked] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsBooked(true);
-        setTimeout(() => setIsBooked(false), 3000);
+        setLoading(true);
+
+        try {
+            const data = new FormData();
+            data.append('sheetName', 'Bookings');
+            data.append('date', formData.date);
+            data.append('service', formData.service);
+            data.append('name', formData.name);
+            data.append('phone', formData.phone);
+
+            await fetch(BOOKING_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: data
+            });
+
+            // Save to localStorage for Dashboard
+            BookingService.add({
+                patientName: formData.name,
+                phone: formData.phone,
+                service: formData.service,
+                date: formData.date,
+            });
+
+
+            setIsBooked(true);
+            setFormData({
+                date: '',
+                service: '',
+                name: '',
+                phone: ''
+            });
+            setTimeout(() => setIsBooked(false), 3000);
+        } catch (error) {
+            console.error('Error submitting form', error);
+            alert('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -27,7 +68,7 @@ const Hero: React.FC = () => {
                     alt="Modern Dental Clinic"
                 />
                 {/* Dark/Teal Overlay for better text contrast */}
-                <div className="absolute inset-0 bg-gradient-to-br from-teal-900/60 via-gray-900/40 to-transparent"></div>
+                <div className="absolute inset-0 bg-linear-to-br from-teal-900/60 via-gray-900/40 to-transparent"></div>
             </div>
 
             <div className="container mx-auto px-6 relative z-10">
@@ -38,7 +79,7 @@ const Hero: React.FC = () => {
                         <div className="inline-block px-4 py-1.5 rounded-full bg-teal-400/20 backdrop-blur-md border border-teal-400/30 text-teal-300 text-xs font-bold uppercase tracking-widest mb-2">
                             Premium Dental Experience
                         </div>
-                        <h1 className="text-6xl lg:text-[6rem] font-extrabold text-white leading-[1] tracking-tight drop-shadow-2xl">
+                        <h1 className="text-6xl lg:text-[6rem] font-extrabold text-white leading-none tracking-tight drop-shadow-2xl">
                             Seamless <span className="text-teal-400">Dental Care</span> For Your Family
                         </h1>
                         <p className="text-xl text-teal-50 max-w-xl leading-relaxed font-medium drop-shadow-md">
@@ -78,7 +119,7 @@ const Hero: React.FC = () => {
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
-                                        <label className="text-xs font-bold text-teal-200 uppercase tracking-[0.1em]">Appointment Date</label>
+                                        <label className="text-xs font-bold text-teal-200 uppercase tracking-widest">Appointment Date</label>
                                         <input
                                             type="date"
                                             required
@@ -88,7 +129,7 @@ const Hero: React.FC = () => {
                                         />
                                     </div>
                                     <div className="space-y-3">
-                                        <label className="text-xs font-bold text-teal-200 uppercase tracking-[0.1em]">Service Type</label>
+                                        <label className="text-xs font-bold text-teal-200 uppercase tracking-widest">Service Type</label>
                                         <div className="relative">
                                             <select
                                                 required
@@ -108,7 +149,7 @@ const Hero: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-xs font-bold text-teal-200 uppercase tracking-[0.1em]">Your Full Name</label>
+                                    <label className="text-xs font-bold text-teal-200 uppercase tracking-widest">Your Full Name</label>
                                     <input
                                         type="text"
                                         placeholder="John Doe"
@@ -120,7 +161,7 @@ const Hero: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-xs font-bold text-teal-200 uppercase tracking-[0.1em]">Phone Number</label>
+                                    <label className="text-xs font-bold text-teal-200 uppercase tracking-widest">Phone Number</label>
                                     <input
                                         type="tel"
                                         placeholder="+1 (555) 000-0000"
@@ -133,11 +174,15 @@ const Hero: React.FC = () => {
 
                                 <button
                                     type="submit"
-                                    disabled={isBooked}
+                                    disabled={isBooked || loading}
                                     className={`w-full py-5 rounded-2xl font-bold text-lg text-white transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 ${isBooked ? 'bg-green-500' : 'bg-teal-500 hover:bg-teal-400 hover:shadow-teal-500/40'
-                                        }`}
+                                        } ${loading ? 'opacity-80 cursor-wait' : ''}`}
                                 >
-                                    {isBooked ? (
+                                    {loading ? (
+                                        <>
+                                            <i className="fa-solid fa-circle-notch animate-spin"></i> Processing...
+                                        </>
+                                    ) : isBooked ? (
                                         <>
                                             <i className="fa-solid fa-circle-check"></i> Booking Confirmed!
                                         </>
